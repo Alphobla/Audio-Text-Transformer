@@ -16,7 +16,7 @@ This project provides a simple Python script to automatically transcribe the new
 ## Installation
 1. Clone this repository:
    ```sh
-   git clone https://github.com/yourusername/whisper-audio-transcriber.git
+   git clone https://github.com/Alphobla/Audio-Text-Transformer
    cd whisper-audio-transcriber
    ```
 2. Install Python dependencies:
