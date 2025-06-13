@@ -1,47 +1,53 @@
 import whisper
 import os
 import glob
-import time
 import sys
+import shutil
 
-def transcribe_newest_audio(downloads_folder=None):
-    # Set your Downloads folder path
-    if downloads_folder is None:
-        downloads_folder = os.path.expanduser('~/Downloads')
+def transcribe_and_write_srt(mp3_path, srt_path, language="fr"):
+    model = whisper.load_model("medium")
+    print(f"Transcribing {mp3_path} with Whisper...")
+    result = model.transcribe(mp3_path, language=language)
+    segments = result["segments"]
 
-    # Define which file types to consider
-    file_types = ('.mp3', '.wav', '.m4a')
+    # Write SRT using phrase-level segments
+    with open(srt_path, "w", encoding="utf-8") as f:
+        for i, seg in enumerate(segments):
+            start = seg["start"] # type: ignore
+            end = seg["end"] # type: ignore
+            text = seg["text"].strip() # type: ignore
+            f.write(f"{i+1}\n")
+            f.write(f"{format_srt_time(start)} --> {format_srt_time(end)}\n")
+            f.write(f"{text}\n\n")
+    print(f"SRT file saved: {srt_path}")
 
-    # Gather all matching files
-    files = []
-    for file_type in file_types:
-        files.extend(glob.glob(os.path.join(downloads_folder, f'*{file_type}')))
+def format_srt_time(seconds):
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    ms = int((seconds - int(seconds)) * 1000)
+    return f"{h:02}:{m:02}:{s:02},{ms:03}"
 
-    # Check if we found any files
-    if not files:
-        print("No audio files found in Downloads folder.")
+if __name__ == "__main__":
+    # Find newest mp3 in Downloads
+    downloads_folder = os.path.expanduser('~/Downloads')
+    mp3_files = glob.glob(os.path.join(downloads_folder, '*.mp3'))
+    if not mp3_files:
+        print(f"No mp3 files found in {downloads_folder}.")
         sys.exit(1)
+    newest_mp3 = max(mp3_files, key=os.path.getmtime)
+    print(f"Newest mp3 found: {newest_mp3}")
 
-    # Find the newest file by modification time
-    newest_file = max(files, key=os.path.getmtime)
+    # Copy to Web_App/audio.mp3
+    web_app_folder = os.path.join(os.path.dirname(__file__), "Web_App")
+    if not os.path.exists(web_app_folder):
+        os.makedirs(web_app_folder)
+    target_mp3 = os.path.join(web_app_folder, "podcast_audio.mp3")
+    shutil.copy2(newest_mp3, target_mp3)
+    print(f"Copied to: {target_mp3}")
 
-    # Print info
-    print(f"Newest file found: {newest_file}")
-
-    # Load the Whisper model
-    model = whisper.load_model('medium')
-
-    # Transcribe the file
-    result = model.transcribe(newest_file, language='fr')
-
-    # Save the transcription
-    output_file = newest_file + '.txt'
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(result['text'])
-
-    print(f"Transcription saved to {output_file}")
-
-if __name__ == '__main__':
-    transcribe_newest_audio()
+    # Transcribe and write SRT
+    srt_path = os.path.join(web_app_folder, "podcast_subtitle.srt")
+    transcribe_and_write_srt(target_mp3, srt_path, language="fr")
 
 
