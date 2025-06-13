@@ -42,12 +42,12 @@ if __name__ == "__main__":
     web_app_folder = os.path.join(os.path.dirname(__file__), "Web_App")
     if not os.path.exists(web_app_folder):
         os.makedirs(web_app_folder)
-    target_mp3 = os.path.join(web_app_folder, "audio.mp3")
+    target_mp3 = os.path.join(web_app_folder, "podcast_audio.mp3")
     shutil.copy2(newest_mp3, target_mp3)
     print(f"Copied to: {target_mp3}")
 
     # Transcribe and write SRT
-    srt_path = os.path.join(web_app_folder, "subtitle.srt")
+    srt_path = os.path.join(web_app_folder, "podcast_subtitle.srt")
     transcribe_and_write_srt(target_mp3, srt_path, language="fr")
 
 
