@@ -1,47 +1,44 @@
 import whisper
 import os
 import glob
-import time
 import sys
 
-def transcribe_newest_audio(downloads_folder=None):
-    # Set your Downloads folder path
-    if downloads_folder is None:
-        downloads_folder = os.path.expanduser('~/Downloads')
+def transcribe_and_write_srt(mp3_path, language="fr"):
+    model = whisper.load_model("medium")
+    print(f"Transcribing {mp3_path} with Whisper...")
+    result = model.transcribe(mp3_path, language=language)
+    segments = result["segments"]
 
-    # Define which file types to consider
+    # Write SRT using phrase-level segments
+    srt_path = mp3_path + ".srt"
+    with open(srt_path, "w", encoding="utf-8") as f:
+        for i, seg in enumerate(segments):
+            start = seg["start"]
+            end = seg["end"]
+            text = seg["text"].strip()
+            f.write(f"{i+1}\n")
+            f.write(f"{format_srt_time(start)} --> {format_srt_time(end)}\n")
+            f.write(f"{text}\n\n")
+    print(f"SRT file saved: {srt_path}")
+
+def format_srt_time(seconds):
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    ms = int((seconds - int(seconds)) * 1000)
+    return f"{h:02}:{m:02}:{s:02},{ms:03}"
+
+if __name__ == "__main__":
+    downloads_folder = os.path.expanduser('~/Downloads')
     file_types = ('.mp3', '.wav', '.m4a')
-
-    # Gather all matching files
     files = []
     for file_type in file_types:
         files.extend(glob.glob(os.path.join(downloads_folder, f'*{file_type}')))
-
-    # Check if we found any files
     if not files:
         print("No audio files found in Downloads folder.")
         sys.exit(1)
-
-    # Find the newest file by modification time
     newest_file = max(files, key=os.path.getmtime)
-
-    # Print info
     print(f"Newest file found: {newest_file}")
-
-    # Load the Whisper model
-    model = whisper.load_model('medium')
-
-    # Transcribe the file
-    result = model.transcribe(newest_file, language='fr')
-
-    # Save the transcription
-    output_file = newest_file + '.txt'
-    with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(result['text'])
-
-    print(f"Transcription saved to {output_file}")
-
-if __name__ == '__main__':
-    transcribe_newest_audio()
+    transcribe_and_write_srt(newest_file, language="fr")
 
 
