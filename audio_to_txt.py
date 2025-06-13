@@ -3,6 +3,8 @@ import os
 import glob
 import sys
 import shutil
+import subprocess
+import webbrowser
 
 def transcribe_and_write_srt(mp3_path, srt_path, language="fr", model_size="tiny"):
     model = whisper.load_model(model_size)
@@ -69,5 +71,15 @@ if __name__ == "__main__":
     # Transcribe and write SRT
     srt_path = os.path.join(web_app_folder, "podcast_subtitle.srt")
     transcribe_and_write_srt(target_mp3, srt_path, language="fr", model_size=model_size)
+
+    # Start HTTP server in Web_App folder
+    print("Starting local web server in Web_App folder...")
+    server_proc = subprocess.Popen([
+        sys.executable, "-m", "http.server", "--directory", web_app_folder
+    ], cwd=web_app_folder)
+    print("Opening browser to http://localhost:8000/index.html ...")
+    webbrowser.open("http://localhost:8000/index.html")
+    print("Press Ctrl+C to stop the server.")
+    server_proc.wait()
 
 
