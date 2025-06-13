@@ -4,9 +4,9 @@ import glob
 import sys
 import shutil
 
-def transcribe_and_write_srt(mp3_path, srt_path, language="fr"):
-    model = whisper.load_model("medium")
-    print(f"Transcribing {mp3_path} with Whisper...")
+def transcribe_and_write_srt(mp3_path, srt_path, language="fr", model_size="tiny"):
+    model = whisper.load_model(model_size)
+    print(f"Transcribing {mp3_path} with Whisper model '{model_size}'...")
     result = model.transcribe(mp3_path, language=language)
     segments = result["segments"]
 
@@ -29,6 +29,26 @@ def format_srt_time(seconds):
     return f"{h:02}:{m:02}:{s:02},{ms:03}"
 
 if __name__ == "__main__":
+    # Model selection (multilingual only)
+    print("Select a Whisper multilingual model:")
+    print("1. tiny (~1GB VRAM, ~10x speed)")
+    print("2. base (~1GB VRAM, ~7x speed)")
+    print("3. small (~2GB VRAM, ~4x speed)")
+    print("4. medium (~5GB VRAM, ~2x speed)")
+    print("5. large (~10GB VRAM, 1x speed)")
+    print("6. turbo (~6GB VRAM, ~8x speed)")
+    choice = input("Enter the number of the model you want to use: ")
+    model_map = {
+        "1": "tiny",
+        "2": "base",
+        "3": "small",
+        "4": "medium",
+        "5": "large",
+        "6": "turbo"
+    }
+    model_size = model_map.get(choice, "small")  # default to 'small' if invalid input
+    print(f"Using model: {model_size}")
+
     # Find newest mp3 in Downloads
     downloads_folder = os.path.expanduser('~/Downloads')
     mp3_files = glob.glob(os.path.join(downloads_folder, '*.mp3'))
@@ -48,6 +68,6 @@ if __name__ == "__main__":
 
     # Transcribe and write SRT
     srt_path = os.path.join(web_app_folder, "podcast_subtitle.srt")
-    transcribe_and_write_srt(target_mp3, srt_path, language="fr")
+    transcribe_and_write_srt(target_mp3, srt_path, language="fr", model_size=model_size)
 
 
