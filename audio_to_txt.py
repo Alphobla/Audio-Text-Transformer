@@ -2,15 +2,15 @@ import whisper
 import os
 import glob
 import sys
+import shutil
 
-def transcribe_and_write_srt(mp3_path, language="fr"):
+def transcribe_and_write_srt(mp3_path, srt_path, language="fr"):
     model = whisper.load_model("medium")
     print(f"Transcribing {mp3_path} with Whisper...")
     result = model.transcribe(mp3_path, language=language)
     segments = result["segments"]
 
     # Write SRT using phrase-level segments
-    srt_path = mp3_path + ".srt"
     with open(srt_path, "w", encoding="utf-8") as f:
         for i, seg in enumerate(segments):
             start = seg["start"]
@@ -29,16 +29,25 @@ def format_srt_time(seconds):
     return f"{h:02}:{m:02}:{s:02},{ms:03}"
 
 if __name__ == "__main__":
+    # Find newest mp3 in Downloads
     downloads_folder = os.path.expanduser('~/Downloads')
-    file_types = ('.mp3', '.wav', '.m4a')
-    files = []
-    for file_type in file_types:
-        files.extend(glob.glob(os.path.join(downloads_folder, f'*{file_type}')))
-    if not files:
-        print("No audio files found in Downloads folder.")
+    mp3_files = glob.glob(os.path.join(downloads_folder, '*.mp3'))
+    if not mp3_files:
+        print(f"No mp3 files found in {downloads_folder}.")
         sys.exit(1)
-    newest_file = max(files, key=os.path.getmtime)
-    print(f"Newest file found: {newest_file}")
-    transcribe_and_write_srt(newest_file, language="fr")
+    newest_mp3 = max(mp3_files, key=os.path.getmtime)
+    print(f"Newest mp3 found: {newest_mp3}")
+
+    # Copy to Web_App/audio.mp3
+    web_app_folder = os.path.join(os.path.dirname(__file__), "Web_App")
+    if not os.path.exists(web_app_folder):
+        os.makedirs(web_app_folder)
+    target_mp3 = os.path.join(web_app_folder, "audio.mp3")
+    shutil.copy2(newest_mp3, target_mp3)
+    print(f"Copied to: {target_mp3}")
+
+    # Transcribe and write SRT
+    srt_path = os.path.join(web_app_folder, "subtitle.srt")
+    transcribe_and_write_srt(target_mp3, srt_path, language="fr")
 
 

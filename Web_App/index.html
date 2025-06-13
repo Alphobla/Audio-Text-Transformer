@@ -1,0 +1,82 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Audio + Selectable Transcript Player</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .transcript { margin-top: 20px; line-height: 1.5; }
+        .cue { margin-bottom: 10px; cursor: pointer; }
+        .cue.active { background: yellow; }
+    </style>
+</head>
+<body>
+    <h2>Audio + Selectable Transcript</h2>
+    <audio id="audio" controls>
+        <source src="your_audio.mp3" type="audio/mpeg" />
+        Your browser does not support the audio element.
+    </audio>
+
+    <div class="transcript" id="transcript"></div>
+
+    <script>
+        async function loadSRT(url) {
+            const res = await fetch(url);
+            const text = await res.text();
+            return parseSRT(text);
+        }
+
+        function parseSRT(data) {
+            const pattern = /\d+\s+([\d:,]+) --> ([\d:,]+)\s+([\s\S]*?)(?=\n\d+|$)/g;
+            const cues = [];
+            let match;
+            while ((match = pattern.exec(data)) !== null) {
+                cues.push({
+                    start: timeToSeconds(match[1]),
+                    end: timeToSeconds(match[2]),
+                    text: match[3].replace(/\n/g, " ")
+                });
+            }
+            return cues;
+        }
+
+        function timeToSeconds(time) {
+            const parts = time.split(/[:,]/);
+            return parseInt(parts[0], 10) * 3600 +
+                   parseInt(parts[1], 10) * 60 +
+                   parseInt(parts[2], 10) +
+                   parseInt(parts[3], 10) / 1000;
+        }
+
+        async function main() {
+            const audio = document.getElementById("audio");
+            const transcriptDiv = document.getElementById("transcript");
+            const cues = await loadSRT("your_subtitle.srt");
+
+            cues.forEach((cue, index) => {
+                const span = document.createElement("div");
+                span.className = "cue";
+                span.textContent = cue.text;
+                span.dataset.index = index;
+                transcriptDiv.appendChild(span);
+            });
+
+            audio.addEventListener("timeupdate", () => {
+                const currentTime = audio.currentTime;
+                cues.forEach((cue, index) => {
+                    const el = transcriptDiv.querySelector(`.cue[data-index='${index}']`);
+                    if (currentTime >= cue.start && currentTime < cue.end) {
+                        el.classList.add("active");
+                    } else {
+                        el.classList.remove("active");
+                    }
+                });
+            });
+        }
+
+        main();
+    </script>
+</body>
+</html>
