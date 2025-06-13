@@ -13,9 +13,9 @@ def transcribe_and_write_srt(mp3_path, srt_path, language="fr"):
     # Write SRT using phrase-level segments
     with open(srt_path, "w", encoding="utf-8") as f:
         for i, seg in enumerate(segments):
-            start = seg["start"]
-            end = seg["end"]
-            text = seg["text"].strip()
+            start = seg["start"] # type: ignore
+            end = seg["end"] # type: ignore
+            text = seg["text"].strip() # type: ignore
             f.write(f"{i+1}\n")
             f.write(f"{format_srt_time(start)} --> {format_srt_time(end)}\n")
             f.write(f"{text}\n\n")
