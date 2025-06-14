@@ -13,12 +13,13 @@
 </head>
 <body>
     <h2>Enjoy your daily podcast.</h2>
-    <audio id="audio" controls>
+    <audio id="audio" controls style="width: 600px;">
         <source src="podcast_audio.mp3" type="audio/mpeg" />
         Your browser does not support the audio element.
     </audio>
-
     <div>
+        <button onclick="jump(-5)">&#8592; -5s</button>
+        <button onclick="jump(5)">+5s &#8594;</button>
         <button onclick="changeSpeed(-0.05)">Slower (-5%)</button>
         <button onclick="changeSpeed(0.05)">Faster (+5%)</button>
         <span id="speedLabel">Speed: 1.00x</span>
@@ -61,6 +62,11 @@
             audio.playbackRate = speed;
             document.getElementById("speedLabel").textContent = `Speed: ${speed.toFixed(2)}x`;
             // If you have subtitle timing logic, adjust it here as well
+        }
+
+        function jump(seconds) {
+            const audio = document.getElementById("audio");
+            audio.currentTime = Math.max(0, audio.currentTime + seconds);
         }
 
         async function main() {
