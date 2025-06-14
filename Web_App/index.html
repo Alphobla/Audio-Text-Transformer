@@ -96,6 +96,26 @@
         }
 
         main();
+
+        document.addEventListener('keydown', function(event) {
+            const audio = document.getElementById('audio');
+            if (event.code === 'Space') {
+                event.preventDefault();
+                if (audio.paused) {
+                    audio.play();
+                } else {
+                    audio.pause();
+                }
+            }
+            if (event.code === 'ArrowLeft') {
+                event.preventDefault();
+                audio.currentTime = Math.max(0, audio.currentTime - 5);
+            }
+            if (event.code === 'ArrowRight') {
+                event.preventDefault();
+                audio.currentTime = Math.min(audio.duration, audio.currentTime + 5);
+            }
+        });
     </script>
 </body>
 </html>
