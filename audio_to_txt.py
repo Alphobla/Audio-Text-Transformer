@@ -5,6 +5,8 @@ import sys
 import shutil
 import subprocess
 import webbrowser
+from mutagen.easyid3 import EasyID3
+from mutagen.mp3 import MP3
 
 def transcribe_and_write_srt(mp3_path, srt_path, language="fr", model_size="tiny"):
     model = whisper.load_model(model_size)
@@ -38,6 +40,19 @@ def format_srt_time(seconds):
 
 def get_base_filename(path):
     return os.path.splitext(os.path.basename(path))[0]
+
+def get_title_from_mp3(mp3_path):
+    try:
+        audio = MP3(mp3_path, ID3=EasyID3)
+        title = audio.get('title', [None])[0]
+        if title:
+            # Clean up title for filename usage
+            title = "".join(c for c in title if c.isalnum() or c in (' ', '_', '-')).rstrip()
+            return title
+    except Exception:
+        pass
+    # fallback: use base filename without extension
+    return os.path.splitext(os.path.basename(mp3_path))[0]
 
 if __name__ == "__main__":
     # Model selection (multilingual only)
