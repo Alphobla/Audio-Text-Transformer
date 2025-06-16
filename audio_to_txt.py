@@ -30,6 +30,9 @@ def format_srt_time(seconds):
     ms = int((seconds - int(seconds)) * 1000)
     return f"{h:02}:{m:02}:{s:02},{ms:03}"
 
+def get_base_filename(path):
+    return os.path.splitext(os.path.basename(path))[0]
+
 if __name__ == "__main__":
     # Model selection (multilingual only)
     print("Select a Whisper multilingual model:")
@@ -60,16 +63,17 @@ if __name__ == "__main__":
     newest_mp3 = max(mp3_files, key=os.path.getmtime)
     print(f"Newest mp3 found: {newest_mp3}")
 
-    # Copy to Web_App/audio.mp3
+    # Copy to Web_App with original name
     web_app_folder = os.path.join(os.path.dirname(__file__), "Web_App")
     if not os.path.exists(web_app_folder):
         os.makedirs(web_app_folder)
-    target_mp3 = os.path.join(web_app_folder, "podcast_audio.mp3")
+    base_name = get_base_filename(newest_mp3)
+    target_mp3 = os.path.join(web_app_folder, f"{base_name}.mp3")
     shutil.copy2(newest_mp3, target_mp3)
     print(f"Copied to: {target_mp3}")
 
-    # Transcribe and write SRT
-    srt_path = os.path.join(web_app_folder, "podcast_subtitle.srt")
+    # Transcribe and write SRT with original name
+    srt_path = os.path.join(web_app_folder, f"{base_name}.srt")
     transcribe_and_write_srt(target_mp3, srt_path, language="fr", model_size=model_size)
 
     # Start HTTP server in Web_App folder
