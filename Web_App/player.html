@@ -16,6 +16,8 @@
         .cue.active { background: yellow; }
         .hidden { display: none; }
     </style>
+    <!-- music-metadata-browser for reading mp3 metadata -->
+    <script src="https://cdn.jsdelivr.net/npm/music-metadata-browser/dist/music-metadata-browser.min.js"></script>
 </head>
 <body>
     <h2>Wähle ein Audio + Transkript Set</h2>
@@ -34,32 +36,38 @@
         <div class="transcript" id="transcript"></div>
     </div>
     <script>
+    // Helper: clean filename for display
+    function cleanFilename(filename) {
+        let name = filename.split('/').pop().replace(/\.mp3$/i, '');
+        name = decodeURIComponent(name);
+        name = name.replace(/%/g, ' ');
+        name = name.replace(/[_-]+/g, ' ');
+        name = name.replace(/\s+/g, ' ').trim();
+        return name;
+    }
+
     // Helper to fetch all mp3+srt pairs in the folder
     async function fetchAudioTranscriptPairs() {
         // List all files in the current directory
         const res = await fetch('.')
         const text = await res.text();
-        console.log('Verzeichnis-HTML:', text);
-        // Parse file names from directory listing (works with Python http.server)
         const mp3s = [...text.matchAll(/href=["']([^"']+\.mp3)["']/g)].map(m => m[1]);
         const srts = [...text.matchAll(/href=["']([^"']+\.srt)["']/g)].map(m => m[1]);
-        console.log('Gefundene MP3s:', mp3s);
-        console.log('Gefundene SRTs:', srts);
         // Find pairs with same base name
         const pairs = mp3s.map(mp3 => {
             const base = mp3.replace(/\.mp3$/, '');
             const srt = srts.find(s => s.replace(/\.srt$/, '') === base);
             return srt ? { base, mp3, srt } : null;
         }).filter(Boolean);
-        console.log('Gefundene Paare:', pairs);
-        // Get file dates for sorting
+        // Get file dates and cleaned titles for sorting and display
         const datedPairs = await Promise.all(pairs.map(async pair => {
             let date = null;
             try {
                 const head = await fetch(pair.mp3, { method: 'HEAD' });
                 date = head.headers.get('last-modified');
             } catch {}
-            return { ...pair, date: date ? new Date(date) : new Date(0) };
+            const title = cleanFilename(pair.mp3);
+            return { ...pair, date: date ? new Date(date) : new Date(0), title };
         }));
         // Sort by date, newest first
         datedPairs.sort((a, b) => b.date - a.date);
@@ -74,7 +82,7 @@
     async function showPlayer(pair) {
         document.getElementById('tiles').classList.add('hidden');
         document.getElementById('playerSection').classList.remove('hidden');
-        document.getElementById('audioTitle').textContent = pair.base;
+        document.getElementById('audioTitle').textContent = pair.title;
         const audio = document.getElementById('audio');
         audio.src = pair.mp3;
         audio.load();
@@ -115,8 +123,8 @@
     }
 
     function parseSRT(data) {
-        // Verwende nur ASCII-Zeichen in der Regex
-        var pattern = /\d+\s+([0-9:,]+) --> ([0-9:,]+)\s+([\s\S]*?)(?=\n\d+|$)/g;
+        // Use RegExp constructor to avoid inline regex issues in HTML
+        var pattern = new RegExp("\\d+\\s+([0-9:,]+) --> ([0-9:,]+)\\s+([\\s\\S]*?)(?=\\n\\d+|$)", "g");
         var cues = [];
         var match;
         while ((match = pattern.exec(data)) !== null) {
@@ -161,7 +169,7 @@
             const tile = document.createElement('div');
             tile.className = 'tile';
             tile.onclick = () => showPlayer(pair);
-            tile.innerHTML = `<div class='tile-title'>${pair.base}</div>` +
+            tile.innerHTML = `<div class='tile-title'>${pair.title}</div>` +
                 `<div class='tile-date'>${pair.date.toLocaleString()}</div>` +
                 `<audio src='${pair.mp3}' controls style='width:100%;max-width:200px;'></audio>`;
             tilesDiv.appendChild(tile);

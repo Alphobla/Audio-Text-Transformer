@@ -88,7 +88,7 @@ if __name__ == "__main__":
     web_app_folder = os.path.join(os.path.dirname(__file__), "Web_App")
     if not os.path.exists(web_app_folder):
         os.makedirs(web_app_folder)
-    base_name = get_base_filename(newest_mp3)
+    base_name = get_title_from_mp3(newest_mp3)
     target_mp3 = os.path.join(web_app_folder, f"{base_name}.mp3")
     shutil.copy2(newest_mp3, target_mp3)
     print(f"Copied to: {target_mp3}")
@@ -103,7 +103,7 @@ if __name__ == "__main__":
         sys.executable, "-m", "http.server", "--directory", web_app_folder
     ], cwd=web_app_folder)
     print("Opening browser to http://localhost:8000/index.html ...")
-    webbrowser.open("http://localhost:8000/index.html")
+    webbrowser.open("http://localhost:8000/")
     print("Press Ctrl+C to stop the server.")
     server_proc.wait()
 
