@@ -9,10 +9,11 @@ import webbrowser
 def transcribe_and_write_srt(mp3_path, srt_path, language="fr", model_size="tiny"):
     model = whisper.load_model(model_size)
     print(f"Transcribing {mp3_path} with Whisper model '{model_size}'...")
-    result = model.transcribe(mp3_path, language=language)
+    result = model.transcribe(mp3_path, language=language, verbose=False)
     segments = result["segments"]
 
-    # Write SRT using phrase-level segments
+    total = len(segments)
+    print(f"Writing SRT ({total} segments):")
     with open(srt_path, "w", encoding="utf-8") as f:
         for i, seg in enumerate(segments):
             start = seg["start"] # type: ignore
@@ -21,7 +22,12 @@ def transcribe_and_write_srt(mp3_path, srt_path, language="fr", model_size="tiny
             f.write(f"{i+1}\n")
             f.write(f"{format_srt_time(start)} --> {format_srt_time(end)}\n")
             f.write(f"{text}\n\n")
-    print(f"SRT file saved: {srt_path}")
+            # Progress indicator
+            if (i + 1) % 10 == 0 or (i + 1) == total:
+                percent = int((i + 1) / total * 100)
+                sys.stdout.write(f"\rProgress: {i+1}/{total} ({percent}%)")
+                sys.stdout.flush()
+    print("\nSRT file saved:", srt_path)
 
 def format_srt_time(seconds):
     h = int(seconds // 3600)
