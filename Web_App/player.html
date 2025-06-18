@@ -175,6 +175,26 @@
             tilesDiv.appendChild(tile);
         });
     };
+
+    // Global spacebar play/pause and arrow key seek for audio, prevent scroll
+    window.addEventListener('keydown', function(e) {
+        const audio = document.getElementById('audio');
+        if (!audio || !audio.src) return;
+        if (e.code === 'Space' || e.key === ' ') {
+            if (!audio.paused) {
+                audio.pause();
+            } else {
+                audio.play();
+            }
+            e.preventDefault();
+        } else if (e.code === 'ArrowLeft') {
+            audio.currentTime = Math.max(0, audio.currentTime - 2);
+            e.preventDefault();
+        } else if (e.code === 'ArrowRight') {
+            audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + 2);
+            e.preventDefault();
+        }
+    });
     </script>
 </body>
 </html>
