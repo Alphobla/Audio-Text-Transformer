@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Audio + Selectable Transcript Player</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .tiles { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 30px; }
+        .tile { border: 1px solid #ccc; border-radius: 8px; padding: 16px; width: 220px; cursor: pointer; background: #f9f9f9; transition: box-shadow 0.2s; }
+        .tile:hover { box-shadow: 0 2px 8px #aaa; background: #f0f8ff; }
+        .tile-title { font-weight: bold; margin-bottom: 8px; }
+        .tile-date { color: #888; font-size: 0.9em; margin-bottom: 8px; }
+        .transcript { margin-top: 20px; line-height: 1.5; }
+        .cue { margin-bottom: 10px; cursor: pointer; }
+        .cue.active { background: yellow; }
+        .hidden { display: none; }
+    </style>
+    <!-- music-metadata-browser for reading mp3 metadata -->
+    <script src="https://cdn.jsdelivr.net/npm/music-metadata-browser/dist/music-metadata-browser.min.js"></script>
+</head>
+<body>
+    <h2>Wähle ein Audio + Transkript Set</h2>
+    <div class="tiles" id="tiles"></div>
+    <div id="playerSection" class="hidden">
+        <button onclick="showTiles()">Zurück zur Auswahl</button>
+        <h3 id="audioTitle"></h3>
+        <audio id="audio" controls style="width: 600px;"></audio>
+        <div>
+            <button onclick="jump(-5)">&#8592; -5s</button>
+            <button onclick="jump(5)">+5s &#8594;</button>
+            <button onclick="changeSpeed(-0.05)">Slower (-5%)</button>
+            <button onclick="changeSpeed(0.05)">Faster (+5%)</button>
+            <span id="speedLabel">Speed: 1.00x</span>
+        </div>
+        <div class="transcript" id="transcript"></div>
+    </div>
+    <script>
+    // Helper: clean filename for display
+    function cleanFilename(filename) {
+        let name = filename.split('/').pop().replace(/\.mp3$/i, '');
+        name = decodeURIComponent(name);
+        name = name.replace(/%/g, ' ');
+        name = name.replace(/[_-]+/g, ' ');
+        name = name.replace(/\s+/g, ' ').trim();
+        return name;
+    }
+
+    // Helper to fetch all mp3+srt pairs in the folder
+    async function fetchAudioTranscriptPairs() {
+        // List all files in the current directory
+        const res = await fetch('.')
+        const text = await res.text();
+        const mp3s = [...text.matchAll(/href=["']([^"']+\.mp3)["']/g)].map(m => m[1]);
+        const srts = [...text.matchAll(/href=["']([^"']+\.srt)["']/g)].map(m => m[1]);
+        // Find pairs with same base name
+        const pairs = mp3s.map(mp3 => {
+            const base = mp3.replace(/\.mp3$/, '');
+            const srt = srts.find(s => s.replace(/\.srt$/, '') === base);
+            return srt ? { base, mp3, srt } : null;
+        }).filter(Boolean);
+        // Get file dates and cleaned titles for sorting and display
+        const datedPairs = await Promise.all(pairs.map(async pair => {
+            let date = null;
+            try {
+                const head = await fetch(pair.mp3, { method: 'HEAD' });
+                date = head.headers.get('last-modified');
+            } catch {}
+            const title = cleanFilename(pair.mp3);
+            return { ...pair, date: date ? new Date(date) : new Date(0), title };
+        }));
+        // Sort by date, newest first
+        datedPairs.sort((a, b) => b.date - a.date);
+        return datedPairs;
+    }
+
+    function showTiles() {
+        document.getElementById('playerSection').classList.add('hidden');
+        document.getElementById('tiles').classList.remove('hidden');
+    }
+
+    async function showPlayer(pair) {
+        document.getElementById('tiles').classList.add('hidden');
+        document.getElementById('playerSection').classList.remove('hidden');
+        document.getElementById('audioTitle').textContent = pair.title;
+        const audio = document.getElementById('audio');
+        audio.src = pair.mp3;
+        audio.load();
+        speed = 1.0;
+        document.getElementById('speedLabel').textContent = `Speed: 1.00x`;
+        await loadTranscript(pair.srt);
+    }
+
+    async function loadTranscript(srtFile) {
+        const transcriptDiv = document.getElementById('transcript');
+        transcriptDiv.innerHTML = '';
+        const cues = await loadSRT(srtFile);
+        cues.forEach((cue, index) => {
+            const span = document.createElement('div');
+            span.className = 'cue';
+            span.textContent = cue.text;
+            span.dataset.index = index;
+            transcriptDiv.appendChild(span);
+        });
+        const audio = document.getElementById('audio');
+        audio.ontimeupdate = () => {
+            const currentTime = audio.currentTime;
+            cues.forEach((cue, index) => {
+                const el = transcriptDiv.querySelector(`.cue[data-index='${index}']`);
+                if (currentTime >= cue.start && currentTime < cue.end) {
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+        };
+    }
+
+    async function loadSRT(url) {
+        const res = await fetch(url);
+        const text = await res.text();
+        return parseSRT(text);
+    }
+
+    function parseSRT(data) {
+        // Use RegExp constructor to avoid inline regex issues in HTML
+        var pattern = new RegExp("\\d+\\s+([0-9:,]+) --> ([0-9:,]+)\\s+([\\s\\S]*?)(?=\\n\\d+|$)", "g");
+        var cues = [];
+        var match;
+        while ((match = pattern.exec(data)) !== null) {
+            cues.push({
+                start: timeToSeconds(match[1]),
+                end: timeToSeconds(match[2]),
+                text: match[3].replace(/\n/g, ' ')
+            });
+        }
+        return cues;
+    }
+
+    function timeToSeconds(time) {
+        const parts = time.split(/[:,]/);
+        return parseInt(parts[0], 10) * 3600 +
+               parseInt(parts[1], 10) * 60 +
+               parseInt(parts[2], 10) +
+               parseInt(parts[3], 10) / 1000;
+    }
+
+    let speed = 1.0;
+    function changeSpeed(delta) {
+        const audio = document.getElementById('audio');
+        speed = Math.max(0.05, speed + delta);
+        audio.playbackRate = speed;
+        document.getElementById('speedLabel').textContent = `Speed: ${speed.toFixed(2)}x`;
+    }
+    function jump(seconds) {
+        const audio = document.getElementById('audio');
+        audio.currentTime = Math.max(0, audio.currentTime + seconds);
+    }
+
+    // On load, show all tiles
+    window.onload = async () => {
+        const tilesDiv = document.getElementById('tiles');
+        const pairs = await fetchAudioTranscriptPairs();
+        tilesDiv.innerHTML = '';
+        if (pairs.length === 0) {
+            tilesDiv.innerHTML = '<p>Keine Audio+Transkript Sets gefunden :(((</p>';
+        }
+        pairs.forEach(pair => {
+            const tile = document.createElement('div');
+            tile.className = 'tile';
+            tile.onclick = () => showPlayer(pair);
+            tile.innerHTML = `<div class='tile-title'>${pair.title}</div>` +
+                `<div class='tile-date'>${pair.date.toLocaleString()}</div>` +
+                `<audio src='${pair.mp3}' controls style='width:100%;max-width:200px;'></audio>`;
+            tilesDiv.appendChild(tile);
+        });
+    };
+
+    // Global spacebar play/pause and arrow key seek for audio, prevent scroll
+    window.addEventListener('keydown', function(e) {
+        const audio = document.getElementById('audio');
+        if (!audio || !audio.src) return;
+        if (e.code === 'Space' || e.key === ' ') {
+            if (!audio.paused) {
+                audio.pause();
+            } else {
+                audio.play();
+            }
+            e.preventDefault();
+        } else if (e.code === 'ArrowLeft') {
+            audio.currentTime = Math.max(0, audio.currentTime - 2);
+            e.preventDefault();
+        } else if (e.code === 'ArrowRight') {
+            audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + 2);
+            e.preventDefault();
+        }
+    });
+    </script>
+</body>
+</html>
