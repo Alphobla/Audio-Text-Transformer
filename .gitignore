@@ -29,10 +29,10 @@ ENV/
 env/
 
 # Audio and subtitle files
-*.mp3
+
 *.wav
 *.m4a
-*.srt
+
 *.vtt
 
 # VS Code settings
